@@ -46,10 +46,9 @@ stages:
         command: build
         Dockerfile: Dockerfile
     - task: Docker@2
+      condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
       displayName: Push image
       inputs:
-        containerRegistry: |
-          $(dockerHub)
         repository: shaym95/bootcamp
         command: push
         tags: |
