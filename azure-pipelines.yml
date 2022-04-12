@@ -37,6 +37,7 @@ stages:
     - script: |
         if $(docker images shaym95/bootcamp -q)
         docker rmi $(docker images shaym95/bootcamp -q)
+        fi
       displayName: remove old and unused Docker images
 
     - task: Docker@2
