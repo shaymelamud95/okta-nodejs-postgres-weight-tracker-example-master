@@ -34,7 +34,9 @@ stages:
     #   inputs:
     #     dockerVersion: '17.09.0-ce'
 
-    - script: docker rmi $(docker images shaym95/bootcamp -q)
+    - script: |
+        if docker images shaym95/bootcamp -q 
+        docker rmi $(docker images shaym95/bootcamp -q)
       displayName: remove old and unused Docker images
 
     - task: Docker@2
