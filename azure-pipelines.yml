@@ -65,9 +65,7 @@ stages:
   jobs:
   - deployment: staging
     displayName: Deploy to Staging
-    environment:
-      name: <<YOUR ENVIRONMENT NAME>>
-      resourceType: VirtualMachine
+    environment: 'stg.stageansibleVM'
     strategy:
       runOnce:
         deploy:
