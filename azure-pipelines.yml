@@ -40,12 +40,9 @@ stages:
         fi
       displayName: remove old and unused Docker images
 
-    - task: Docker@2
-      displayName: Build an image
-      inputs:
-        repository: shaym95/bootcamp
-        command: build
-        Dockerfile: Dockerfile
+    - script: |
+        sudo docker build -t shaym95/bootcamp:latest
+      displayName: docker build
     - task: Docker@2
       condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
       displayName: Push image
