@@ -33,9 +33,7 @@ stages:
     # - task: DockerInstaller@0
     #   inputs:
     #     dockerVersion: '17.09.0-ce'
-    - task: Docker@2
-      inputs:
-        command: 'login'
+    
     - script: docker rmi shaym95/bootcamp
       displayName: remove old and unused Docker images
 
