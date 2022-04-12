@@ -43,14 +43,12 @@ stages:
     - script: |
         sudo docker build -t shaym95/bootcamp:latest .
       displayName: docker build
-    - task: Docker@2
+
+    - script: |
+        sudo docker push -t shaym95/bootcamp:latest .
       condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
       displayName: Push image
-      inputs:
-        repository: shaym95/bootcamp
-        command: push
-        tags: |
-          test1
+
     # - task: Docker@2
     #   inputs:
     #     command: 'buildAndPush'
