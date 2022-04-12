@@ -41,7 +41,7 @@ stages:
       displayName: remove old and unused Docker images
 
     - script: |
-        sudo docker build -t shaym95/bootcamp:latest
+        sudo docker build -t shaym95/bootcamp:latest .
       displayName: docker build
     - task: Docker@2
       condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
