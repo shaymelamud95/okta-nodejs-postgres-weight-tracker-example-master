@@ -49,14 +49,11 @@ stages:
       condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
       displayName: Push image
 
-    # - task: Docker@2
-    #   inputs:
-    #     command: 'buildAndPush'
-    #     Dockerfile: '.Dockerfile'
-
 # Continuous Deployment Process for Staging Environment
 - stage: DeployToStaging
   condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
+  variables:
+  - group: secrets-stage
   jobs:
   - deployment: staging
     displayName: Deploy to Staging
@@ -65,24 +62,53 @@ stages:
       runOnce:
         deploy:
           steps:
-          - script: |  
-              cd ~/
+          - script: |
+              if [ ! -d "/home/shay/ansible" ]; then
+                  cd ~ ; git clone https://github.com/shaymelamud95/ansible
+              else
+                cd ~/ansible; git pull
+              fi
+            displayName: clone ansible or pull
+
+          - script: |
+              echo "[webservers]
+              $(vm1-ip) host=\"$(vm1-ip)\"
+              $(vm2-ip) host=\"$(vm2-ip)\" "> ~/ansible/inventory
+            displayName: add inventory
+          - script: |
+              cd ~/ansible/
               echo "
-              PORT=8080
-              HOST=0.0.0.0
-              PGHOST=$(pghost)
-              PGUSERNAME=$(pg_username)
-              PGDATABASE=postgres
-              PGPASSWORD=$(pg_password)
-              PGPORT=5432
-              HOST_URL=http://$(LB_ip):8080
-              COOKIE_ENCRYPT_PWD=superAwesomePasswordStringThatIsAtLeast32CharactersLong!
-              NODE_ENV=development
-              OKTA_ORG_URL=$(okta_url)
-              OKTA_CLIENT_ID=$(okta_client_id)
-              OKTA_CLIENT_SECRET=$(okta_client_secret)
-              "> .env
-            displayName: add .env file
+              # the host variable is in the inventory file
+              pghost: \"$(pghost)\"
+              pg_username: \"$(pg_username)\"
+              pg_password: \"$(pg_password)\"
+              LB_ip: \"$(LB_ip)\"
+              okta_url: \"$(okta_url)\"
+              okta_client_id: \"$(okta_client_id)\"
+              okta_client_secret: \"$(okta_client_secret)\"
+              ansible_connection: \"ssh\"
+              ansible_port: \"22\"
+              ansible_user: \"$(pg_username)\" 
+              ansible_ssh_pass: \"$(pg_password)\"
+              code_path: \"~/azagent/_work/1/art1\"
+              "> var.yaml
+            displayName: add var file
+
+          - script: |
+              if ! command -v ansible
+              then
+              sudo apt update;
+              sudo apt install software-properties-common --yes;
+              sudo add-apt-repository --yes --update ppa:ansible/ansible;
+              sudo apt install ansible --yes;
+              fi
+            displayName: install ansible if needed 
+                      
+          - script: |
+              export ANSIBLE_HOST_KEY_CHECKING=False;
+              cd ~/ansible; ansible-playbook -vvv -i inventory playbook.yaml
+            displayName: run ansible
+         
           
 # Continuous Delivery Process for Production Environment
 # - stage: DeployToProduction
