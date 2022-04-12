@@ -4,6 +4,9 @@ trigger:
 
 pool: default
 
+variables: 
+- group: "secrets-stage"
+
 stages:
 # Continuous Integration Process
 - stage: CI
@@ -13,7 +16,7 @@ stages:
       clean: all
     steps:
     - script: |
-        if ! command -v node; then
+        if ! command -v docker; then
           sudo apt-get remove docker docker-engine docker.io containerd runc
           sudo apt-get update
           sudo apt-get install \
@@ -30,31 +33,60 @@ stages:
     # - task: DockerInstaller@0
     #   inputs:
     #     dockerVersion: '17.09.0-ce'
+    - script: docker rmi shaym95/bootcamp
+      displayName: remove old and unused Docker images
+
     - task: Docker@2
       displayName: Build an image
       inputs:
-        repository: 'img'
+        repository: shaym95/bootcamp
         command: build
         Dockerfile: Dockerfile
     - task: Docker@2
+      displayName: Push image
       inputs:
-        command: 'buildAndPush'
-        Dockerfile: '.Dockerfile'
+        containerRegistry: |
+          $(dockerHub)
+        repository: shaym95/bootcamp
+        command: push
+        tags: |
+          test1
+    # - task: Docker@2
+    #   inputs:
+    #     command: 'buildAndPush'
+    #     Dockerfile: '.Dockerfile'
 
 # Continuous Deployment Process for Staging Environment
-# - stage: DeployToStaging
-#   condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
-#   jobs:
-#   - deployment: staging
-#     displayName: Deploy to Staging
-#     environment:
-#       name: <<YOUR ENVIRONMENT NAME>>
-#       resourceType: VirtualMachine
-#     strategy:
-#       runOnce:
-#         deploy:
-#           steps:
-#           - <<YOUR TASKS>>
+- stage: DeployToStaging
+  condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
+  jobs:
+  - deployment: staging
+    displayName: Deploy to Staging
+    environment:
+      name: <<YOUR ENVIRONMENT NAME>>
+      resourceType: VirtualMachine
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: |  
+              cd ~/
+              echo "
+              PORT=8080
+              HOST=0.0.0.0
+              PGHOST=$(pghost)
+              PGUSERNAME=$(pg_username)
+              PGDATABASE=postgres
+              PGPASSWORD=$(pg_password)
+              PGPORT=5432
+              HOST_URL=http://$(LB_ip):8080
+              COOKIE_ENCRYPT_PWD=superAwesomePasswordStringThatIsAtLeast32CharactersLong!
+              NODE_ENV=development
+              OKTA_ORG_URL=$(okta_url)
+              OKTA_CLIENT_ID=$(okta_client_id)
+              OKTA_CLIENT_SECRET=$(okta_client_secret)
+              "> .env
+            displayName: add .env file
           
 # Continuous Delivery Process for Production Environment
 # - stage: DeployToProduction
