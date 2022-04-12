@@ -90,7 +90,7 @@ stages:
               ansible_port: \"22\"
               ansible_user: \"$(pg_username)\" 
               ansible_ssh_pass: \"$(pg_password)\"
-              code_path: \"~/azagent/_work/1/"
+              code_path: \"~/azagent/_work/1\"
               "> var.yaml
             displayName: add var file
 
