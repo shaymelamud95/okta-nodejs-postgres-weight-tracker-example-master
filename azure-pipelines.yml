@@ -45,7 +45,7 @@ stages:
       displayName: docker build
 
     - script: |
-        sudo docker push shaym95/bootcamp:latest .
+        sudo docker push shaym95/bootcamp:latest
       condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
       displayName: Push image
 
