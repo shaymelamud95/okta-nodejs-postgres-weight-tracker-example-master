@@ -4,6 +4,9 @@ trigger:
 
 pool: default
 
+variables: 
+- group: "secrets-stage"
+
 stages:
 # Continuous Integration Process
 - stage: CI
@@ -13,7 +16,7 @@ stages:
       clean: all
     steps:
     - script: |
-        if ! command -v node; then
+        if ! command -v docker; then
           sudo apt-get remove docker docker-engine docker.io containerd runc
           sudo apt-get update
           sudo apt-get install \
@@ -30,31 +33,82 @@ stages:
     # - task: DockerInstaller@0
     #   inputs:
     #     dockerVersion: '17.09.0-ce'
-    - task: Docker@2
-      displayName: Build an image
-      inputs:
-        repository: 'img'
-        command: build
-        Dockerfile: Dockerfile
-    - task: Docker@2
-      inputs:
-        command: 'buildAndPush'
-        Dockerfile: '.Dockerfile'
+
+    - script: |
+        if $(docker images shaym95/bootcamp -q); then
+          docker rmi $(docker images shaym95/bootcamp -q)
+        fi
+      displayName: remove old and unused Docker images
+
+    - script: |
+        sudo docker build -t shaym95/bootcamp:latest .
+      displayName: docker build
+
+    - script: |
+        sudo docker push shaym95/bootcamp:latest
+      condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
+      displayName: Push image
 
 # Continuous Deployment Process for Staging Environment
-# - stage: DeployToStaging
-#   condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
-#   jobs:
-#   - deployment: staging
-#     displayName: Deploy to Staging
-#     environment:
-#       name: <<YOUR ENVIRONMENT NAME>>
-#       resourceType: VirtualMachine
-#     strategy:
-#       runOnce:
-#         deploy:
-#           steps:
-#           - <<YOUR TASKS>>
+- stage: DeployToStaging
+  condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
+  variables:
+  - group: secrets-stage
+  jobs:
+  - deployment: staging
+    displayName: Deploy to Staging
+    environment: 'stg.stageansibleVM'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: |
+              if [ ! -d "/home/shay/ansible" ]; then
+                  cd ~ ; git clone https://github.com/shaymelamud95/ansible
+              else
+                cd ~/ansible; git pull
+              fi
+            displayName: clone ansible or pull
+
+          - script: |
+              echo "[webservers]
+              $(vm1-ip) host=\"$(vm1-ip)\"
+              $(vm2-ip) host=\"$(vm2-ip)\" "> ~/ansible/inventory
+            displayName: add inventory
+          - script: |
+              cd ~/ansible/
+              echo "
+              # the host variable is in the inventory file
+              pghost: \"$(pghost)\"
+              pg_username: \"$(pg_username)\"
+              pg_password: \"$(pg_password)\"
+              LB_ip: \"$(LB_ip)\"
+              okta_url: \"$(okta_url)\"
+              okta_client_id: \"$(okta_client_id)\"
+              okta_client_secret: \"$(okta_client_secret)\"
+              ansible_connection: \"ssh\"
+              ansible_port: \"22\"
+              ansible_user: \"$(pg_username)\" 
+              ansible_ssh_pass: \"$(pg_password)\"
+              code_path: \"~/azagent/_work/1\"
+              "> var.yaml
+            displayName: add var file
+
+          - script: |
+              if ! command -v ansible
+              then
+              sudo apt update;
+              sudo apt install software-properties-common --yes;
+              sudo add-apt-repository --yes --update ppa:ansible/ansible;
+              sudo apt install ansible --yes;
+              fi
+            displayName: install ansible if needed 
+                      
+          - script: |
+              export ANSIBLE_HOST_KEY_CHECKING=False;
+              cd ~/ansible; ansible-playbook -vvv -i inventory playbook.yaml
+            displayName: run ansible
+         
           
 # Continuous Delivery Process for Production Environment
 # - stage: DeployToProduction
