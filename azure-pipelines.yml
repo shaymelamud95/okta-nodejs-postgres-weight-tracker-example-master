@@ -35,8 +35,8 @@ stages:
     #     dockerVersion: '17.09.0-ce'
 
     - script: |
-        if $(docker images shaym95/bootcamp -q); then
-          docker rmi $(docker images shaym95/bootcamp -q)
+        if $(sudo docker images shaym95/bootcamp -q); then
+          sudo docker rmi $(sudo docker images shaym95/bootcamp -q)
         fi
       displayName: remove old and unused Docker images
 
@@ -111,16 +111,60 @@ stages:
          
           
 # Continuous Delivery Process for Production Environment
-# - stage: DeployToProduction
-#   condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
-#   jobs:
-#   - deployment: production
-#     displayName: Deploy to Production
-#     environment:
-#       name: <<YOUR ENVIRONMENT NAME>>
-#       resourceType: VirtualMachine
-#     strategy:
-#       runOnce:
-#         deploy:
-#           steps:
-#           - <<YOUR TASKS>>
+- stage: DeployToProduction
+  condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
+  jobs:
+  - deployment: production
+    displayName: Deploy to Production
+    environment: 'deployment.prodansibleVM'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: |
+              if [ ! -d "/home/shay/ansible" ]; then
+                  cd ~ ; git clone https://github.com/shaymelamud95/ansible
+              else
+                cd ~/ansible; git pull
+              fi
+            displayName: clone ansible or pull
+
+          - script: |
+              echo "[webservers]
+              $(vm1-ip) host=\"$(vm1-ip)\"
+              $(vm2-ip) host=\"$(vm2-ip)\"
+              $(vm3-ip) host=\"$(vm3-ip)\" "> ~/ansible/inventory
+            displayName: add inventory
+          - script: |
+              cd ~/ansible/
+              echo "
+              # the host variable is in the inventory file
+              pghost: \"$(pghost)\"
+              pg_username: \"$(pg_username)\"
+              pg_password: \"$(pg_password)\"
+              LB_ip: \"$(LB_ip)\"
+              okta_url: \"$(okta_url)\"
+              okta_client_id: \"$(okta_client_id)\"
+              okta_client_secret: \"$(okta_client_secret)\"
+              ansible_connection: \"ssh\"
+              ansible_port: \"22\"
+              ansible_user: \"$(pg_username)\" 
+              ansible_ssh_pass: \"$(pg_password)\"
+              code_path: \"~/azagent/_work/1\"
+              "> var.yaml
+            displayName: add var file
+
+          - script: |
+              if ! command -v ansible
+              then
+              sudo apt update;
+              sudo apt install software-properties-common --yes;
+              sudo add-apt-repository --yes --update ppa:ansible/ansible;
+              sudo apt install ansible --yes;
+              fi
+            displayName: install ansible if needed 
+                      
+          - script: |
+              export ANSIBLE_HOST_KEY_CHECKING=False;
+              cd ~/ansible; ansible-playbook -vvv -i inventory playbook.yaml
+            displayName: run ansible
