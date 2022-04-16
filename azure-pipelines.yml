@@ -35,8 +35,9 @@ stages:
     #     dockerVersion: '17.09.0-ce'
 
     - script: |
-        if $(sudo docker images shaym95/bootcamp -q); then
-          sudo docker rmi $(sudo docker images shaym95/bootcamp -q)
+        if [ $(sudo  docker ps -aq | wc -l ) -gt 0 ]; then
+          sudo docker rm -f $(sudo docker ps -qa)
+          sudo docker rmi -f $(sudo docker images -q)
         fi
       displayName: remove old and unused Docker images
 
@@ -91,9 +92,9 @@ stages:
               ansible_user: \"$(pg_username)\" 
               ansible_ssh_pass: \"$(pg_password)\"
               code_path: \"~/azagent/_work/1\"
-              docker_password:\"$(docker_password)\" 
-              docker_username:\"$(docker_username)\" 
-              docker_url:\"$(docker_url)\" 
+              docker_password: \"$(docker_password)\" 
+              docker_username: \"$(docker_username)\" 
+              docker_url: \"$(docker_url)\" 
               "> var.yaml
             displayName: add var file
 
