@@ -156,9 +156,9 @@ stages:
               ansible_user: \"$(pg_username)\" 
               ansible_ssh_pass: \"$(pg_password)\"
               code_path: \"~/azagent/_work/1\"
-              docker_password:\"$(docker_password)\" 
-              docker_username:\"$(docker_username)\" 
-              docker_url:\"$(docker_url)\" 
+              docker_password: \"$(docker_password)\" 
+              docker_username: \"$(docker_username)\" 
+              docker_url: \"$(docker_url)\" 
               "> var.yaml
             displayName: add var file
 
